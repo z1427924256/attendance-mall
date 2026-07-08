@@ -1,8 +1,12 @@
 // Frontend API client - communicates with Cloudflare Workers backend
 import type { Merchant } from "@/data/mockData";
 import type { AttendanceRecord, RollCallRule } from "@/store/useAdminStore";
+import { Capacitor } from "@capacitor/core";
 
-const BASE = "/api";
+// Capacitor 原生 APP 环境下使用线上 URL，浏览器环境用相对路径
+const BASE = Capacitor.isNativePlatform()
+  ? "https://attendance-rollcall.pages.dev/api"
+  : "/api";
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${BASE}${path}`, {
