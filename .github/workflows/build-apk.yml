@@ -33,10 +33,10 @@ jobs:
       - name: Checkout 代码
         uses: actions/checkout@v4
 
-      - name: 安装 Node.js
+      - name: 安装 Node.js 22（Capacitor 8 要求 Node >= 22）
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
 
       - name: 配置 Java JDK 17（Android Gradle Plugin 8.x 要求）
@@ -50,9 +50,6 @@ jobs:
 
       - name: 构建前端 Web 资源
         run: npm run build
-
-      - name: 安装 Capacitor CLI
-        run: npm install -g @capacitor/cli@8
 
       - name: 添加 Android 平台
         run: npx cap add android
