@@ -1,50 +1,20 @@
 /** @type {import('tailwindcss').Config} */
-
 export default {
-  darkMode: "class",
-  content: ["./index.html", "./src/**/*.{js,ts,jsx,tsx}"],
+  content: ['./index.html', './src/**/*.{vue,js,ts,jsx,tsx}'],
+  // 排除 Arco 自带样式，避免冲突
+  corePlugins: {
+    preflight: false,
+  },
   theme: {
-    container: {
-      center: true,
-    },
     extend: {
       colors: {
-        primary: "#00b578",
-        "primary-dark": "#009a66",
-        "primary-light": "#e6f9f0",
-        warning: "#ff9500",
-        "warning-light": "#fff7e6",
-        ink: "#1a1a1a",
-        muted: "#666666",
-        base: "#f5f5f5",
-        card: "#ffffff",
+        primary: 'rgb(var(--arcoblue-6))',
+        success: 'rgb(var(--green-6))',
+        warning: 'rgb(var(--orange-6))',
+        danger: 'rgb(var(--red-6))',
       },
-      borderRadius: {
-        card: "16px",
-      },
-      spacing: {
-        gutter: "16px",
-      },
-      fontSize: {
-        merchant: "22px",
-      },
-      width: {
-        checkin: "170px",
-      },
-      height: {
-        checkin: "170px",
-      },
-      fontFamily: {
-        sans: [
-          "-apple-system",
-          "BlinkMacSystemFont",
-          "PingFang SC",
-          "Hiragino Sans GB",
-          "Microsoft YaHei",
-          "Segoe UI",
-          "Noto Sans",
-          "sans-serif",
-        ],
+      maxWidth: {
+        h5: '430px',
       },
     },
   },

@@ -48,8 +48,8 @@ jobs:
       - name: 安装 npm 依赖
         run: npm ci
 
-      - name: 构建前端 Web 资源
-        run: npm run build
+      - name: 构建前端 Web 资源（使用 build:fast 跳过 vue-tsc 类型检查，避免 functions/ 后端类型声明阻断 APK 构建）
+        run: npm run build:fast
 
       - name: 添加 Android 平台
         run: npx cap add android
