@@ -39,11 +39,11 @@ jobs:
           node-version: 22
           cache: npm
 
-      - name: 配置 Java JDK 17（Android Gradle Plugin 8.x 要求）
+      - name: 配置 Java JDK 21（Capacitor 8 的 capacitor-android 要求 Java 21）
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: "17"
+          java-version: "21"
 
       - name: 安装 npm 依赖
         run: npm ci
