@@ -1,0 +1,12 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "attendance-rollcall",
+  "pages_build_output_dir": "./dist",
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_id": "e6571246-c549-4522-b964-946a2a323dd7",
+      "database_name": "attendance-db"
+    }
+  ]
+}
