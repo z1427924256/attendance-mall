@@ -1,5 +1,6 @@
 // Service Worker - 商场考勤管理系统 PWA
-const CACHE_NAME = "attendance-v1.0.0";
+// 版本号变更会触发 activate 清理所有旧缓存（包括 React 老版本残留资源）
+const CACHE_NAME = "attendance-vue-1.0.0";
 const STATIC_ASSETS = [
   "/",
   "/index.html",
@@ -17,7 +18,7 @@ self.addEventListener("install", (event) => {
   self.skipWaiting();
 });
 
-// 激活：清理旧缓存
+// 激活：清理所有非当前版本的缓存（清除 React 版残留）
 self.addEventListener("activate", (event) => {
   event.waitUntil(
     caches.keys().then((keys) =>
@@ -27,7 +28,7 @@ self.addEventListener("activate", (event) => {
   self.clients.claim();
 });
 
-// 请求拦截：缓存优先，网络回退
+// 请求拦截：网络优先，缓存回退（确保拿到最新 Vue 资源，避免 React 旧缓存污染）
 self.addEventListener("fetch", (event) => {
   const { request } = event;
 
@@ -36,22 +37,32 @@ self.addEventListener("fetch", (event) => {
 
   const url = new URL(request.url);
 
-  // 同源请求：缓存优先
+  // 同源导航请求（HTML）：网络优先，确保拿到最新 index.html
+  if (url.origin === self.location.origin && request.mode === "navigate") {
+    event.respondWith(
+      fetch(request)
+        .then((response) => {
+          const clone = response.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
+          return response;
+        })
+        .catch(() => caches.match(request).then((r) => r || caches.match("/index.html")))
+    );
+    return;
+  }
+
+  // 同源静态资源（JS/CSS）：网络优先，回退缓存
   if (url.origin === self.location.origin) {
     event.respondWith(
-      caches.match(request).then((cached) => {
-        if (cached) return cached;
-        return fetch(request)
-          .then((response) => {
-            // 缓存新的静态资源
-            if (response.ok && response.type === "basic") {
-              const clone = response.clone();
-              caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
-            }
-            return response;
-          })
-          .catch(() => caches.match("/index.html"));
-      })
+      fetch(request)
+        .then((response) => {
+          if (response.ok && response.type === "basic") {
+            const clone = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
+          }
+          return response;
+        })
+        .catch(() => caches.match(request))
     );
     return;
   }

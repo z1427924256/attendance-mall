@@ -2,7 +2,7 @@
 import { reactive, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { Message } from '@arco-design/web-vue';
-import type { FieldData } from '@arco-design/web-vue';
+import type { ValidatedError } from '@arco-design/web-vue';
 
 const router = useRouter();
 const route = useRoute();
@@ -18,8 +18,9 @@ const rules = {
   password: [{ required: true, message: '请输入密码' }],
 };
 
-function handleSubmit(values: FieldData | undefined, errors: unknown) {
-  if (errors) return;
+// Arco a-form 的 submit 事件签名：(data: { values, errors }, ev: Event) => void
+function handleSubmit(data: { values: Record<string, any>; errors: Record<string, ValidatedError> | undefined }, _ev: Event) {
+  if (data.errors) return;
   loading.value = true;
   setTimeout(() => {
     if (form.username === 'admin' && form.password === 'admin123') {
