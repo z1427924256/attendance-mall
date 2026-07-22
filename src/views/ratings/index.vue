@@ -91,8 +91,7 @@ const filteredRatings = computed(() => {
     (r) =>
       r.merchantName.toLowerCase().includes(kw) ||
       r.floor.toLowerCase().includes(kw) ||
-      r.location.toLowerCase().includes(kw) ||
-      r.category.toLowerCase().includes(kw)
+      r.location.toLowerCase().includes(kw)
   );
 });
 
@@ -107,7 +106,6 @@ const columns: TableColumnData[] = [
   { title: '商户', dataIndex: 'merchantName', width: 180 },
   { title: '楼层', dataIndex: 'floor', width: 80, align: 'center' },
   { title: '铺位', dataIndex: 'location', width: 110 },
-  { title: '业态', dataIndex: 'category', width: 110 },
   { title: '月份', dataIndex: 'month', width: 100, align: 'center' },
   { title: '评分', slotName: 'score', width: 160, sortable: { sortDirections: ['descend', 'ascend'], sorter: (a, b) => a.score - b.score } },
   { title: '等级', slotName: 'level', width: 100, align: 'center' },
@@ -128,7 +126,6 @@ function handleExport() {
       商户: r.merchantName,
       楼层: r.floor,
       铺位: r.location,
-      业态: r.category,
       月份: r.month,
       评分: r.score,
       等级: levelText(r.level),
@@ -218,7 +215,7 @@ function handleExport() {
         <div class="toolbar">
           <a-input-search
             v-model="searchText"
-            placeholder="搜索商户 / 楼层 / 铺位 / 业态"
+            placeholder="搜索商户 / 楼层 / 铺位"
             style="width: 280px"
             allow-clear
           />

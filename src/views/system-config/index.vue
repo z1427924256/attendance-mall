@@ -1,15 +1,23 @@
 <script setup lang="ts">
 import { onMounted, reactive, ref } from 'vue';
 import { Message } from '@arco-design/web-vue';
+import type { FileItem } from '@arco-design/web-vue';
 import * as api from '@/api/client';
+import { uploadBackground } from '@/api/client';
 
 interface ConfigForm {
   mallName: string;
   logoUrl: string;
   reportHeader: string;
   exportWatermark: string;
-  emailNotification: boolean;
-  themeColor: string;
+  mallAddress: string;
+  servicePhone: string;
+  mallHours: string;
+  copyright: string;
+  icp: string;
+  checkinRadius: number;
+  locationEnabled: boolean;
+  homeBgUrl: string;
 }
 
 const createForm = (): ConfigForm => ({
@@ -17,27 +25,80 @@ const createForm = (): ConfigForm => ({
   logoUrl: '',
   reportHeader: '',
   exportWatermark: '',
-  emailNotification: false,
-  themeColor: '#165DFF',
+  mallAddress: '',
+  servicePhone: '',
+  mallHours: '',
+  copyright: '',
+  icp: '',
+  checkinRadius: 0,
+  locationEnabled: false,
+  homeBgUrl: '',
 });
 
 const form = reactive<ConfigForm>(createForm());
+const formRef = ref();
 const saving = ref(false);
 const loading = ref(false);
+const uploadingBg = ref(false);
+
+function beforeUpload(file: File): boolean {
+  if (!file.type.startsWith('image/')) {
+    Message.error('请选择图片文件');
+    return false;
+  }
+  if (file.size > 5 * 1024 * 1024) {
+    Message.error('图片不能超过 5MB');
+    return false;
+  }
+  return true;
+}
+
+async function handleBgChange(fileItemList: FileItem[], fileItem: FileItem) {
+  const f = fileItem.file;
+  if (!f) return;
+  if (!beforeUpload(f)) return;
+  uploadingBg.value = true;
+  try {
+    const { url } = await uploadBackground(f);
+    form.homeBgUrl = url;
+    Message.success('背景图上传成功');
+  } catch (e) {
+    Message.error('背景图上传失败：' + ((e as Error).message || ''));
+  } finally {
+    uploadingBg.value = false;
+  }
+}
+
+function removeBg() {
+  form.homeBgUrl = '';
+}
+
+// 兼容后端 camelCase / snake_case 两种 key 形式
+function pick(cfg: Record<string, string>, ...keys: string[]): string {
+  for (const k of keys) {
+    if (cfg[k] !== undefined && cfg[k] !== null) return String(cfg[k]);
+  }
+  return '';
+}
 
 async function loadConfig() {
   loading.value = true;
   try {
     const cfg = await api.fetchSystemConfig();
-    form.mallName = (cfg.mallName as string) ?? (cfg.mall_name as string) ?? '';
-    form.logoUrl = (cfg.logoUrl as string) ?? (cfg.logo_url as string) ?? '';
-    form.reportHeader = (cfg.reportHeader as string) ?? (cfg.report_header as string) ?? '';
-    form.exportWatermark =
-      (cfg.exportWatermark as string) ?? (cfg.export_watermark as string) ?? '';
-    const en =
-      (cfg.emailNotification as string) ?? (cfg.email_notification as string) ?? '0';
-    form.emailNotification = en === '1' || en === 'true';
-    form.themeColor = (cfg.themeColor as string) ?? (cfg.theme_color as string) ?? '#165DFF';
+    form.mallName = pick(cfg, 'mallName', 'mall_name');
+    form.logoUrl = pick(cfg, 'logoUrl', 'logo_url');
+    form.reportHeader = pick(cfg, 'reportHeader', 'report_header');
+    form.exportWatermark = pick(cfg, 'exportWatermark', 'export_watermark');
+    form.mallAddress = pick(cfg, 'mallAddress', 'mall_address');
+    form.servicePhone = pick(cfg, 'servicePhone', 'service_phone');
+    form.mallHours = pick(cfg, 'mallHours', 'mall_hours');
+    form.copyright = pick(cfg, 'copyright');
+    form.icp = pick(cfg, 'icp');
+    const radius = pick(cfg, 'checkinRadius', 'checkin_radius');
+    form.checkinRadius = radius ? Number(radius) || 0 : 0;
+    const loc = pick(cfg, 'locationEnabled', 'location_enabled');
+    form.locationEnabled = loc === '1' || loc === 'true';
+    form.homeBgUrl = pick(cfg, 'homeBgUrl', 'home_bg_url');
   } catch {
     Message.error('加载系统配置失败');
   } finally {
@@ -53,8 +114,14 @@ async function handleSave() {
       logoUrl: form.logoUrl,
       reportHeader: form.reportHeader,
       exportWatermark: form.exportWatermark,
-      emailNotification: form.emailNotification ? '1' : '0',
-      themeColor: form.themeColor,
+      mallAddress: form.mallAddress,
+      servicePhone: form.servicePhone,
+      mallHours: form.mallHours,
+      copyright: form.copyright,
+      icp: form.icp,
+      checkinRadius: String(form.checkinRadius ?? 0),
+      locationEnabled: form.locationEnabled ? '1' : '0',
+      homeBgUrl: form.homeBgUrl,
     });
     Message.success('配置保存成功');
   } catch {
@@ -69,6 +136,36 @@ onMounted(loadConfig);
 
 <template>
   <div class="page-container">
+    <a-card title="主页背景图" style="margin-bottom: 16px">
+      <div class="bg-upload-row">
+        <div class="bg-preview">
+          <img v-if="form.homeBgUrl" :src="form.homeBgUrl" alt="背景图" />
+          <div v-else class="bg-empty">未设置背景图</div>
+        </div>
+        <div class="bg-actions">
+          <a-upload
+            :auto-upload="false"
+            :show-file-list="false"
+            :show-remove-button="false"
+            :custom-request="() => {}"
+            accept="image/*"
+            @change="handleBgChange"
+          >
+            <template #upload-button>
+              <a-button :loading="uploadingBg" type="primary">
+                <template #icon><icon-upload /></template>
+                上传背景图
+              </a-button>
+            </template>
+          </a-upload>
+          <a-button v-if="form.homeBgUrl" status="danger" type="text" @click="removeBg">
+            移除背景
+          </a-button>
+          <span class="hint">建议尺寸 750×1624，≤5MB。上传后请点击下方"保存配置"。</span>
+        </div>
+      </div>
+    </a-card>
+
     <a-card title="系统配置">
       <div class="toolbar">
         <span class="section-title">基础配置</span>
@@ -84,10 +181,10 @@ onMounted(loadConfig);
         </a-space>
       </div>
 
-      <a-form :model="form" layout="vertical">
+      <a-form ref="formRef" :model="form" layout="vertical">
         <a-grid :cols="2" :col-gap="16" :row-gap="0">
           <a-grid-item>
-            <a-form-item field="mallName" label="商场名称">
+            <a-form-item field="mallName" label="商场名称" :rules="[{required:true,message:'请输入商场名称'}]">
               <a-input v-model="form.mallName" placeholder="请输入商场名称" allow-clear />
             </a-form-item>
           </a-grid-item>
@@ -107,21 +204,46 @@ onMounted(loadConfig);
             </a-form-item>
           </a-grid-item>
           <a-grid-item>
-            <a-form-item field="emailNotification" label="邮件推送">
-              <a-switch v-model="form.emailNotification" />
-              <span class="hint">开启后报表将自动邮件推送</span>
+            <a-form-item field="mallAddress" label="商场地址">
+              <a-input v-model="form.mallAddress" placeholder="请输入商场地址" allow-clear />
             </a-form-item>
           </a-grid-item>
           <a-grid-item>
-            <a-form-item field="themeColor" label="主题色">
-              <a-space>
-                <input
-                  v-model="form.themeColor"
-                  type="color"
-                  class="color-input"
-                />
-                <a-input v-model="form.themeColor" style="width: 130px" />
-              </a-space>
+            <a-form-item field="servicePhone" label="客服电话">
+              <a-input v-model="form.servicePhone" placeholder="请输入客服电话" allow-clear />
+            </a-form-item>
+          </a-grid-item>
+          <a-grid-item>
+            <a-form-item field="mallHours" label="营业时间">
+              <a-input v-model="form.mallHours" placeholder="如 10:00-22:00" allow-clear />
+            </a-form-item>
+          </a-grid-item>
+          <a-grid-item>
+            <a-form-item field="checkinRadius" label="签到半径（米）">
+              <a-input-number
+                v-model="form.checkinRadius"
+                :min="0"
+                :step="1"
+                :precision="0"
+                style="width: 100%"
+                placeholder="单位米"
+              />
+            </a-form-item>
+          </a-grid-item>
+          <a-grid-item>
+            <a-form-item field="copyright" label="版权信息">
+              <a-input v-model="form.copyright" placeholder="请输入版权信息" allow-clear />
+            </a-form-item>
+          </a-grid-item>
+          <a-grid-item>
+            <a-form-item field="icp" label="ICP备案号">
+              <a-input v-model="form.icp" placeholder="请输入 ICP 备案号" allow-clear />
+            </a-form-item>
+          </a-grid-item>
+          <a-grid-item>
+            <a-form-item field="locationEnabled" label="定位开关">
+              <a-switch v-model="form.locationEnabled" />
+              <span class="hint">开启后签到将校验商户位置</span>
             </a-form-item>
           </a-grid-item>
         </a-grid>
@@ -150,13 +272,41 @@ onMounted(loadConfig);
   color: var(--color-text-3);
 }
 
-.color-input {
-  width: 36px;
-  height: 32px;
-  padding: 0;
-  border: 1px solid var(--color-neutral-3);
-  border-radius: 4px;
-  background: transparent;
-  cursor: pointer;
+.bg-upload-row {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+}
+.bg-preview {
+  width: 120px;
+  height: 200px;
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--color-fill-2);
+  flex-shrink: 0;
+  border: 1px solid var(--color-border-2);
+}
+.bg-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.bg-empty {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  color: var(--color-text-3);
+}
+.bg-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-start;
+}
+.bg-actions .hint {
+  margin-left: 0;
 }
 </style>

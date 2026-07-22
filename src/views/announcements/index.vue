@@ -12,7 +12,6 @@ const editing = ref<Announcement | null>(null);
 const formRef = ref();
 
 const floorList = ref<StructureItem[]>([]);
-const categoryList = ref<StructureItem[]>([]);
 
 function itemName(items: StructureItem[], id: string) {
   return items.find((x) => x.id === id)?.name ?? id;
@@ -47,12 +46,9 @@ async function loadList() {
 
 async function loadOptions() {
   try {
-    const [floors, categories] = await Promise.all([api.fetchFloors(), api.fetchCategories()]);
-    floorList.value = floors;
-    categoryList.value = categories;
+    floorList.value = await api.fetchFloors();
   } catch {
     floorList.value = [];
-    categoryList.value = [];
   }
 }
 
@@ -136,9 +132,7 @@ function scopeText(record: Announcement) {
       ? [record.scope]
       : [];
   if (!ids.length) return '-';
-  return ids
-    .map((id) => itemName(floorList.value, id) || itemName(categoryList.value, id))
-    .join('、');
+  return ids.map((id) => itemName(floorList.value, id)).join('、');
 }
 
 const columns = [
@@ -245,13 +239,10 @@ const pagination = { pageSize: 10, showTotal: true };
             multiple
             allow-clear
             allow-search
-            placeholder="选择楼层 / 业态"
+            placeholder="选择楼层"
           >
             <a-optgroup label="楼层">
               <a-option v-for="f in floorList" :key="f.id" :value="f.id">{{ f.name }}</a-option>
-            </a-optgroup>
-            <a-optgroup label="业态">
-              <a-option v-for="c in categoryList" :key="c.id" :value="c.id">{{ c.name }}</a-option>
             </a-optgroup>
           </a-select>
         </a-form-item>

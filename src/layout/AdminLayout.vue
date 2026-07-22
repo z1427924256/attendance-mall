@@ -8,13 +8,18 @@ import {
   IconMenuUnfold,
   IconPoweroff,
   IconUser,
+  IconSunFill,
+  IconMoonFill,
 } from '@arco-design/web-vue/es/icon';
 import { menuItems, menuGroups, type MenuItem } from '@/config/menu';
+import { useTheme } from '@/composables/useTheme';
 
 const route = useRoute();
 const router = useRouter();
 const collapsed = ref(false);
 const isMobile = ref(false);
+
+const { isDark, toggleTheme } = useTheme();
 
 // 响应式：移动端抽屉
 const breakpoints = useBreakpoints({ mobile: 768 });
@@ -59,9 +64,9 @@ function toggleSidebar() {
 }
 
 function handleLogout() {
-  localStorage.removeItem('admin_auth');
+  localStorage.clear();
   Message.success('已退出登录');
-  router.push('/admin/login');
+  router.push('/login');
 }
 
 onMounted(() => {
@@ -142,12 +147,20 @@ onMounted(() => {
             </template>
           </a-button>
           <a-breadcrumb class="header-breadcrumb">
-            <a-breadcrumb-item v-for="(b, i) in breadcrumb" :key="i">
+            <a-breadcrumb-item v-for="b in breadcrumb" :key="b.path">
               {{ b.label }}
             </a-breadcrumb-item>
           </a-breadcrumb>
         </div>
         <div class="header-right">
+          <a-tooltip :content="isDark ? '切换到亮色模式' : '切换到暗色模式'">
+            <a-button type="text" shape="circle" @click="toggleTheme">
+              <template #icon>
+                <icon-moon-fill v-if="!isDark" />
+                <icon-sun-fill v-else />
+              </template>
+            </a-button>
+          </a-tooltip>
           <a-dropdown>
             <a-space style="cursor: pointer">
               <a-avatar :size="30">
@@ -167,7 +180,7 @@ onMounted(() => {
 
       <a-layout-content class="admin-content">
         <router-view v-slot="{ Component }">
-          <transition name="fade" mode="out-in">
+          <transition name="admin-page" mode="out-in">
             <component :is="Component" />
           </transition>
         </router-view>
@@ -238,6 +251,7 @@ onMounted(() => {
 .header-right {
   display: flex;
   align-items: center;
+  gap: 8px;
 }
 
 .admin-content {

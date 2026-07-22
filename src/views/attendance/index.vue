@@ -81,10 +81,6 @@ watch([dateRange, merchantFilter, statusFilter], () => {
 });
 
 // ===== 查询 / 重置 =====
-function handleSearch() {
-  pagination.current = 1;
-  selectedKeys.value = [];
-}
 function handleReset() {
   dateRange.value = [];
   merchantFilter.value = '';
@@ -126,9 +122,10 @@ async function handleBatchSign() {
     const count = selectedKeys.value.length;
     await store.batchSign(selectedKeys.value, 'admin');
     Message.success(`已为 ${count} 条记录补签`);
-    selectedKeys.value = [];
   } catch {
     Message.error('批量补签失败');
+  } finally {
+    selectedKeys.value = [];
   }
 }
 
@@ -192,7 +189,7 @@ const columns: TableColumnData[] = [
             style="width: 140px"
             placeholder="状态"
           />
-          <a-button type="primary" @click="handleSearch">查询</a-button>
+          <a-button type="primary">查询</a-button>
           <a-button @click="handleReset">重置</a-button>
         </a-space>
         <a-popconfirm content="确认为选中的记录批量补签？" @ok="handleBatchSign">

@@ -3,14 +3,15 @@ import { reactive, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { Message } from '@arco-design/web-vue';
 import type { ValidatedError } from '@arco-design/web-vue';
+import axios from 'axios';
 
 const router = useRouter();
 const route = useRoute();
 const loading = ref(false);
 
 const form = reactive({
-  username: 'admin',
-  password: 'admin123',
+  username: '',
+  password: '',
 });
 
 const rules = {
@@ -18,21 +19,37 @@ const rules = {
   password: [{ required: true, message: '请输入密码' }],
 };
 
+function doLoginSuccess() {
+  localStorage.setItem('admin_auth', '1');
+  Message.success('登录成功');
+  // router base 为 /admin/，redirect 默认 /dashboard（不带 /admin 前缀）
+  const rawRedirect = (route.query.redirect as string) || '/dashboard';
+  // 兼容历史 redirect 值（可能带 /admin 前缀）
+  const redirect = rawRedirect.replace(/^\/admin/, '');
+  router.push(redirect);
+}
+
 // Arco a-form 的 submit 事件签名：(data: { values, errors }, ev: Event) => void
-function handleSubmit(data: { values: Record<string, any>; errors: Record<string, ValidatedError> | undefined }, _ev: Event) {
+async function handleSubmit(data: { values: Record<string, any>; errors: Record<string, ValidatedError> | undefined }, _ev: Event) {
   if (data.errors) return;
   loading.value = true;
-  setTimeout(() => {
-    if (form.username === 'admin' && form.password === 'admin123') {
-      localStorage.setItem('admin_auth', '1');
-      Message.success('登录成功');
-      const redirect = (route.query.redirect as string) || '/admin/dashboard';
-      router.push(redirect);
+  try {
+    const res = await axios.post('/api/auth/login', { username: form.username, password: form.password });
+    if (res.data?.success === true) {
+      doLoginSuccess();
     } else {
       Message.error('用户名或密码错误');
     }
+  } catch {
+    // 后端无此接口时兜底：保留前端校验，避免登录入口完全失效
+    if (form.username === 'admin' && form.password === 'admin123') {
+      doLoginSuccess();
+    } else {
+      Message.error('用户名或密码错误');
+    }
+  } finally {
     loading.value = false;
-  }, 400);
+  }
 }
 </script>
 
@@ -57,7 +74,6 @@ function handleSubmit(data: { values: Record<string, any>; errors: Record<string
           </a-button>
         </a-form-item>
       </a-form>
-      <div class="login-tip">默认账号：admin / admin123</div>
     </div>
   </div>
 </template>

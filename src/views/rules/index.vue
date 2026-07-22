@@ -37,6 +37,7 @@ const createForm = (): RollCallRule => ({
 });
 
 const form = reactive<RollCallRule>(createForm());
+const formRef = ref();
 const holidayInput = ref('');
 const saving = ref(false);
 
@@ -113,10 +114,10 @@ async function handleSave() {
         </a-button>
       </div>
 
-      <a-form :model="form" layout="vertical">
+      <a-form ref="formRef" :model="form" layout="vertical">
         <a-grid :cols="2" :col-gap="16" :row-gap="0">
           <a-grid-item>
-            <a-form-item field="dailyStartTime" label="每日点名开始时间">
+            <a-form-item field="dailyStartTime" label="每日点名开始时间" :rules="[{required:true,message:'请选择开始时间'}]">
               <a-time-picker
                 v-model="form.dailyStartTime"
                 format="HH:mm"
@@ -127,7 +128,7 @@ async function handleSave() {
             </a-form-item>
           </a-grid-item>
           <a-grid-item>
-            <a-form-item field="dailyEndTime" label="每日点名结束时间">
+            <a-form-item field="dailyEndTime" label="每日点名结束时间" :rules="[{required:true,message:'请选择结束时间'}]">
               <a-time-picker
                 v-model="form.dailyEndTime"
                 format="HH:mm"
@@ -207,7 +208,7 @@ async function handleSave() {
       <div class="preview-block">
         <div class="section-title">规则预览</div>
         <ul class="preview-list">
-          <li v-for="(line, i) in previewLines" :key="i">{{ line }}</li>
+          <li v-for="line in previewLines" :key="line">{{ line }}</li>
         </ul>
       </div>
     </a-card>

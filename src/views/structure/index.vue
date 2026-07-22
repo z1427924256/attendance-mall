@@ -4,7 +4,7 @@ import { Message } from '@arco-design/web-vue';
 import * as api from '@/api/client';
 import type { StructureItem } from '@/types';
 
-type EntityType = 'floor' | 'area' | 'category';
+type EntityType = 'floor' | 'area';
 
 const entityApi = {
   floor: {
@@ -20,13 +20,6 @@ const entityApi = {
     update: api.updateArea,
     remove: api.deleteArea,
     label: '区域',
-  },
-  category: {
-    fetch: api.fetchCategories,
-    create: api.createCategory,
-    update: api.updateCategory,
-    remove: api.deleteCategory,
-    label: '业态分类',
   },
 } as const;
 
@@ -60,7 +53,6 @@ function createState(): EntityState {
 const states = reactive<Record<EntityType, EntityState>>({
   floor: createState(),
   area: createState(),
-  category: createState(),
 });
 
 const activeTab = ref<EntityType>('floor');
@@ -102,13 +94,12 @@ async function loadFloors() {
 
 onMounted(async () => {
   await loadFloors();
-  await Promise.all([loadList('floor'), loadList('area'), loadList('category')]);
+  await Promise.all([loadList('floor'), loadList('area')]);
 });
 
 function onTabChange() {
   states.floor.modalVisible = false;
   states.area.modalVisible = false;
-  states.category.modalVisible = false;
 }
 
 function openAdd() {
@@ -194,8 +185,6 @@ const areaColumns = [
   { title: '操作', slotName: 'operations', width: 140, fixed: 'right' as const },
 ];
 
-const categoryColumns = floorColumns;
-
 const pagination = { pageSize: 10, showTotal: true };
 </script>
 
@@ -261,38 +250,6 @@ const pagination = { pageSize: 10, showTotal: true };
               <a-space>
                 <a-button type="text" size="small" @click="openEdit(record)">编辑</a-button>
                 <a-popconfirm content="确认删除该区域吗？" type="warning" @ok="handleDelete(record)">
-                  <a-button type="text" status="danger" size="small">删除</a-button>
-                </a-popconfirm>
-              </a-space>
-            </template>
-          </a-table>
-        </a-tab-pane>
-
-        <!-- 业态分类 -->
-        <a-tab-pane key="category" title="业态分类">
-          <div class="toolbar">
-            <a-button type="primary" @click="openAdd">
-              <template #icon><icon-plus /></template>
-              新增业态
-            </a-button>
-          </div>
-          <a-table
-            :data="states.category.list"
-            :columns="categoryColumns"
-            :loading="states.category.loading"
-            :pagination="pagination"
-            row-key="id"
-            size="medium"
-            style="margin-top: 12px"
-          >
-            <template #status="{ record }">
-              <a-tag v-if="record.status === 'active'" color="green" size="small">启用</a-tag>
-              <a-tag v-else color="gray" size="small">停用</a-tag>
-            </template>
-            <template #operations="{ record }">
-              <a-space>
-                <a-button type="text" size="small" @click="openEdit(record)">编辑</a-button>
-                <a-popconfirm content="确认删除该业态吗？" type="warning" @ok="handleDelete(record)">
                   <a-button type="text" status="danger" size="small">删除</a-button>
                 </a-popconfirm>
               </a-space>

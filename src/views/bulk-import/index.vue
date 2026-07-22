@@ -14,23 +14,38 @@ const TEMPLATE_HEADERS = [
 ];
 
 function parseCsv(text: string): Record<string, string>[] {
-  const lines = text.trim().split(/\r?\n/);
-  if (!lines.length) return [];
-  const headers = lines[0].split(',').map((h) => h.trim());
-  return lines.slice(1)
-    .filter((l) => l.trim())
-    .map((line) => {
-      const values = line.split(',').map((v) => v.trim());
-      const row: Record<string, string> = {};
-      headers.forEach((h, i) => (row[h] = values[i] ?? ''));
-      return row;
-    });
+  const rows: string[][] = [];
+  let row: string[] = [];
+  let field = '';
+  let inQuotes = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (inQuotes) {
+      if (c === '"') { if (text[i + 1] === '"') { field += '"'; i++; } else inQuotes = false; }
+      else field += c;
+    } else {
+      if (c === '"') inQuotes = true;
+      else if (c === ',') { row.push(field); field = ''; }
+      else if (c === '\n') { row.push(field); rows.push(row); row = []; field = ''; }
+      else if (c === '\r') { /* skip */ }
+      else field += c;
+    }
+  }
+  if (field || row.length) { row.push(field); rows.push(row); }
+  const filtered = rows.filter((r) => r.some((c) => c.trim() !== ''));
+  if (!filtered.length) return [];
+  const headers = filtered[0].map((h) => h.trim());
+  return filtered.slice(1).map((r) => {
+    const obj: Record<string, string> = {};
+    headers.forEach((h, i) => (obj[h] = (r[i] ?? '').trim()));
+    return obj;
+  });
 }
 
 function downloadTemplate() {
   const csv = [
     TEMPLATE_HEADERS.join(','),
-    '示例商铺,1F,1F-101,餐饮,🏪,张三,13800000000,80,10:00-22:00,true',
+    '示例商铺,1F,1F-101,true',
   ].join('\n');
   const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8' });
   const url = URL.createObjectURL(blob);
@@ -106,12 +121,6 @@ async function handleConfirmImport() {
         name: r.name,
         floor: r.floor,
         location: r.location,
-        category: r.category,
-        emoji: r.emoji,
-        manager: r.manager,
-        contact: r.contact,
-        area: Number(r.area) || 0,
-        openHours: r.openHours,
         verified: String(r.verified).toLowerCase() === 'true' || r.verified === '1',
         signedIn: false,
       }));
@@ -141,7 +150,7 @@ const selectedKeys = ref<string[]>([]);
 const batchModalVisible = ref(false);
 const batchSubmitting = ref(false);
 const batchForm = reactive({
-  field: 'verified' as 'verified' | 'signedIn' | 'floor' | 'category',
+  field: 'verified' as 'verified' | 'signedIn' | 'floor',
   value: '',
 });
 
@@ -149,7 +158,6 @@ const batchFieldOptions = [
   { label: '认证状态 (verified)', value: 'verified' },
   { label: '到岗状态 (signedIn)', value: 'signedIn' },
   { label: '楼层 (floor)', value: 'floor' },
-  { label: '业态 (category)', value: 'category' },
 ];
 
 const isBooleanField = computed(() => batchForm.field === 'verified' || batchForm.field === 'signedIn');
@@ -158,9 +166,6 @@ const merchantColumns: TableColumnData[] = [
   { title: '商户', dataIndex: 'name', width: 180 },
   { title: '楼层', dataIndex: 'floor', width: 80, align: 'center' },
   { title: '铺位', dataIndex: 'location', width: 110 },
-  { title: '业态', dataIndex: 'category', width: 120 },
-  { title: '负责人', dataIndex: 'manager', width: 100 },
-  { title: '联系电话', dataIndex: 'contact', width: 130 },
   { title: '认证', slotName: 'verified', width: 80, align: 'center' },
 ];
 

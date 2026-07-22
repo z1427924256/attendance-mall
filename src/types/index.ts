@@ -6,12 +6,6 @@ export interface Merchant {
   name: string;
   floor: string; // 1F / 2F / 3F / 4F
   location: string; // 铺位号 如 2F-222
-  category: string; // 业态
-  emoji: string;
-  manager: string;
-  contact: string;
-  area: number;
-  openHours: string;
   verified: boolean;
   avatar?: string;
   signedIn: boolean;
@@ -89,7 +83,6 @@ export interface RatingItem {
   merchantName: string;
   floor: string;
   location: string;
-  category: string;
   month: string; // YYYY-MM
   score: number;
   level: 'excellent' | 'qualified' | 'warning' | 'watchlist';
@@ -97,6 +90,19 @@ export interface RatingItem {
   absentCount: number;
   presentCount: number;
   totalDays: number;
+}
+
+/** 邮件配置 */
+export interface EmailConfig {
+  enabled: boolean;
+  smtpHost: string;
+  smtpPort: number;
+  smtpUser: string;
+  smtpPassword?: string; // 写入时用，读取时不返回
+  hasPassword?: boolean; // 读取时返回
+  fromName: string;
+  fromEmail: string;
+  recipients: string[];
 }
 
 /** 预警规则 */

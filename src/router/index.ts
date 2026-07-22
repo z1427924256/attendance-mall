@@ -1,32 +1,19 @@
 import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router';
 
-const H5Layout = () => import('@/layout/H5Layout.vue');
 const AdminLayout = () => import('@/layout/AdminLayout.vue');
 
 const routes: RouteRecordRaw[] = [
-  // ===== H5 商户端 =====
+  // ===== 管理后台路由（base=/admin/，路径不带 /admin 前缀）=====
   {
-    path: '/',
-    component: H5Layout,
-    children: [
-      { path: '', name: 'Home', component: () => import('@/views/h5/RollCallHome.vue'), meta: { title: '点名首页' } },
-      { path: 'merchants', name: 'MerchantList', component: () => import('@/views/h5/MerchantList.vue'), meta: { title: '商户' } },
-      { path: 'records', name: 'RecordList', component: () => import('@/views/h5/RecordList.vue'), meta: { title: '记录' } },
-      { path: 'merchant/:id', name: 'MerchantDetail', component: () => import('@/views/h5/MerchantDetail.vue'), meta: { title: '商户详情', hideNav: true } },
-    ],
-  },
-
-  // ===== 管理后台 =====
-  {
-    path: '/admin/login',
+    path: '/login',
     name: 'Login',
     component: () => import('@/views/login/index.vue'),
     meta: { title: '登录' },
   },
   {
-    path: '/admin',
+    path: '/',
     component: AdminLayout,
-    redirect: '/admin/dashboard',
+    redirect: '/dashboard',
     meta: { requiresAuth: true },
     children: [
       { path: 'dashboard', name: 'AdminDashboard', component: () => import('@/views/dashboard/index.vue'), meta: { title: '仪表盘' } },
@@ -46,19 +33,21 @@ const routes: RouteRecordRaw[] = [
       { path: 'alert-rules', name: 'AlertRules', component: () => import('@/views/alert-rules/index.vue'), meta: { title: '智能预警' } },
       { path: 'announcements', name: 'Announcements', component: () => import('@/views/announcements/index.vue'), meta: { title: '公告管理' } },
       { path: 'system-config', name: 'SystemConfig', component: () => import('@/views/system-config/index.vue'), meta: { title: '系统配置' } },
+      { path: 'theme-config', name: 'ThemeConfig', component: () => import('@/views/theme-config/index.vue'), meta: { title: '主题配置' } },
+      { path: 'email-config', name: 'EmailConfig', component: () => import('@/views/email-config/index.vue'), meta: { title: '邮件配置' } },
     ],
   },
-
-  { path: '/:pathMatch(.*)*', redirect: '/' },
+  // 未匹配路径重定向到登录
+  { path: '/:pathMatch(.*)*', redirect: '/login' },
 ];
 
 const router = createRouter({
-  history: createWebHistory(),
+  // base 设为 /admin/，Vue Router 自动剥离该前缀
+  history: createWebHistory('/admin/'),
   routes,
   scrollBehavior: () => ({ top: 0 }),
 });
 
-// 鉴权守卫
 router.beforeEach((to, _from, next) => {
   const isAuthed = localStorage.getItem('admin_auth') === '1';
   if (to.meta.requiresAuth && !isAuthed) {

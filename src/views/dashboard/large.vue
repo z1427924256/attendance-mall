@@ -94,13 +94,17 @@ const floorSpec = computed(() => {
   };
 });
 
-// 4. 业态环形图
-const categorySpec = computed(() => {
-  const map = new Map<string, number>();
-  store.merchants.forEach((m) => map.set(m.category, (map.get(m.category) ?? 0) + 1));
+// 4. 认证状态环形图
+const verifiedSpec = computed(() => {
+  const verified = store.merchants.filter((m) => m.verified).length;
+  const unverified = store.merchants.length - verified;
+  const values = [
+    { name: '已认证', value: verified },
+    { name: '未认证', value: unverified },
+  ].filter((d) => d.value > 0);
   return {
     type: 'pie',
-    data: [{ id: 'cat', values: Array.from(map, ([name, value]) => ({ name, value })) }],
+    data: [{ id: 'cat', values }],
     valueField: 'value',
     categoryField: 'name',
     outerRadius: 0.8,
@@ -215,8 +219,8 @@ const absentTrendSpec = computed(() => {
         <div class="chart-box"><VChartView :spec="floorSpec" /></div>
       </div>
       <div class="large-card span-3">
-        <div class="card-title">业态占比</div>
-        <div class="chart-box"><VChartView :spec="categorySpec" /></div>
+        <div class="card-title">认证状态占比</div>
+        <div class="chart-box"><VChartView :spec="verifiedSpec" /></div>
       </div>
       <div class="large-card span-4">
         <div class="card-title">商户到岗率 Top10</div>

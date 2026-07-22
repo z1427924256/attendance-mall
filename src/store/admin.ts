@@ -40,6 +40,13 @@ export const useAdminStore = defineStore('admin', {
       exportWatermark: '内部资料 请勿外传',
       emailNotification: '0',
       themeColor: '#165DFF',
+      mallAddress: '',
+      servicePhone: '',
+      mallHours: '10:00-22:00',
+      copyright: '',
+      icp: '',
+      checkinRadius: '0',
+      locationEnabled: '0',
     },
     announcements: [],
     loading: false,
@@ -81,6 +88,13 @@ export const useAdminStore = defineStore('admin', {
           exportWatermark: systemConfig.exportWatermark ?? systemConfig.export_watermark ?? '内部资料 请勿外传',
           emailNotification: systemConfig.emailNotification ?? systemConfig.email_notification ?? '0',
           themeColor: systemConfig.themeColor ?? systemConfig.theme_color ?? '#165DFF',
+          mallAddress: systemConfig.mallAddress ?? systemConfig.mall_address ?? '',
+          servicePhone: systemConfig.servicePhone ?? systemConfig.service_phone ?? '',
+          mallHours: systemConfig.mallHours ?? systemConfig.mall_hours ?? '10:00-22:00',
+          copyright: systemConfig.copyright ?? '',
+          icp: systemConfig.icp ?? '',
+          checkinRadius: systemConfig.checkinRadius ?? systemConfig.checkin_radius ?? '0',
+          locationEnabled: systemConfig.locationEnabled ?? systemConfig.location_enabled ?? '0',
         };
         this.announcements = announcements;
       } finally {
@@ -104,39 +118,81 @@ export const useAdminStore = defineStore('admin', {
       return m;
     },
     async updateMerchant(id: string, data: Partial<Merchant>) {
+      const old = JSON.parse(JSON.stringify(this.merchants));
       // 乐观更新
       this.merchants = this.merchants.map((m) => (m.id === id ? { ...m, ...data } : m));
-      await api.updateMerchant(id, data);
+      try {
+        await api.updateMerchant(id, data);
+      } catch (e) {
+        this.merchants = old;
+        console.error('updateMerchant failed', e);
+        throw e;
+      }
     },
     async removeMerchant(id: string) {
+      const old = JSON.parse(JSON.stringify(this.merchants));
       this.merchants = this.merchants.filter((m) => m.id !== id);
-      await api.deleteMerchant(id);
+      try {
+        await api.deleteMerchant(id);
+      } catch (e) {
+        this.merchants = old;
+        console.error('removeMerchant failed', e);
+        throw e;
+      }
     },
 
     // ===== 考勤记录 =====
     async setRecordStatus(id: string, status: AttendanceRecord['status'], operator = 'admin', signedAt?: string) {
+      const old = JSON.parse(JSON.stringify(this.records));
       this.records = this.records.map((r) =>
         r.id === id ? { ...r, status, operator, signedAt: signedAt ?? r.signedAt } : r
       );
-      await api.updateRecord(id, { status, operator, signedAt });
+      try {
+        await api.updateRecord(id, { status, operator, signedAt });
+      } catch (e) {
+        this.records = old;
+        console.error('setRecordStatus failed', e);
+        throw e;
+      }
     },
     async addRemark(id: string, remark: string, operator = 'admin') {
+      const old = JSON.parse(JSON.stringify(this.records));
       this.records = this.records.map((r) => (r.id === id ? { ...r, remark, operator } : r));
-      await api.updateRecord(id, { remark, operator });
+      try {
+        await api.updateRecord(id, { remark, operator });
+      } catch (e) {
+        this.records = old;
+        console.error('addRemark failed', e);
+        throw e;
+      }
     },
     async batchSign(ids: string[], operator = 'admin') {
       const now = new Date();
       const signedAt = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+      const old = JSON.parse(JSON.stringify(this.records));
       this.records = this.records.map((r) =>
         ids.includes(r.id) ? { ...r, status: 'signedIn' as const, operator, signedAt } : r
       );
-      await api.batchSignRecords(ids, operator);
+      try {
+        await api.batchSignRecords(ids, operator);
+      } catch (e) {
+        this.records = old;
+        console.error('batchSign failed', e);
+        throw e;
+      }
     },
 
     // ===== 规则 =====
     async updateRule(data: Partial<RollCallRule>) {
+      const old = JSON.parse(JSON.stringify(this.rule));
       this.rule = { ...this.rule, ...data };
-      await api.updateRules(data);
+      try {
+        await api.updateRules(data);
+      } catch (e) {
+        this.rule = old;
+        console.error('updateRule failed', e);
+        throw e;
+      }
     },
   },
 

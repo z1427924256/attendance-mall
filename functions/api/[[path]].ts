@@ -13,10 +13,16 @@ interface RequestContext {
 }
 
 // ===== 工具函数 =====
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,PATCH,OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type,Authorization',
+};
+
 const json = (data: unknown, status = 200) =>
   new Response(JSON.stringify(data), {
     status,
-    headers: { 'Content-Type': 'application/json; charset=utf-8' },
+    headers: { 'Content-Type': 'application/json; charset=utf-8', ...corsHeaders },
   });
 
 const err = (message: string, status = 400) => json({ error: message }, status);
@@ -91,6 +97,19 @@ export async function onRequest(context: RequestContext) {
   const path = params.path || [];
   const url = new URL(request.url);
   const pathStr = path.join('/');
+
+  // CORS 预检
+  if (method === 'OPTIONS') {
+    return new Response(null, {
+      status: 204,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,PATCH,OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type,Authorization',
+        'Access-Control-Max-Age': '86400',
+      },
+    });
+  }
 
   try {
     // ===== Merchants =====

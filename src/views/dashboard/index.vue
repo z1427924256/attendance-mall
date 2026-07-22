@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { computed, onMounted } from 'vue';
+import dayjs from 'dayjs';
 import { useAdminStore } from '@/store/admin';
 import VChartView from '@/components/VChartView.vue';
+import { useCountUp } from '@/composables/useCountUp';
 import type { Merchant } from '@/types';
 
 const store = useAdminStore();
@@ -12,6 +14,12 @@ onMounted(() => {
 
 const stats = computed(() => store.todayStats);
 
+// 统计数字滚动入场
+const totalDisplay = useCountUp(() => stats.value.total);
+const signedInDisplay = useCountUp(() => stats.value.signedIn);
+const absentDisplay = useCountUp(() => stats.value.absent);
+const rateDisplay = useCountUp(() => stats.value.rate);
+
 // 近 7 天考勤趋势
 const trendSpec = computed(() => {
   const today = new Date();
@@ -19,7 +27,7 @@ const trendSpec = computed(() => {
   for (let i = 6; i >= 0; i--) {
     const d = new Date(today);
     d.setDate(d.getDate() - i);
-    const dateStr = d.toISOString().slice(0, 10);
+    const dateStr = dayjs(d).format('YYYY-MM-DD');
     const recs = store.records.filter((r) => r.date === dateStr);
     days.push({
       date: `${d.getMonth() + 1}/${d.getDate()}`,
@@ -65,11 +73,14 @@ const floorSpec = computed(() => {
   };
 });
 
-// 业态占比
-const categorySpec = computed(() => {
-  const map = new Map<string, number>();
-  store.merchants.forEach((m) => map.set(m.category, (map.get(m.category) ?? 0) + 1));
-  const values = Array.from(map, ([name, value]) => ({ name, value }));
+// 认证状态占比
+const verifiedSpec = computed(() => {
+  const verified = store.merchants.filter((m: Merchant) => m.verified).length;
+  const unverified = store.merchants.length - verified;
+  const values = [
+    { name: '已认证', value: verified },
+    { name: '未认证', value: unverified },
+  ].filter((d) => d.value > 0);
   return {
     type: 'pie',
     data: [{ id: 'cat', values }],
@@ -108,27 +119,27 @@ const columns = [
   <div class="page-container">
     <!-- 统计卡 -->
     <a-grid :cols="{ xs: 2, sm: 4 }" :col-gap="12" :row-gap="12" style="margin-bottom: 16px">
-      <a-grid-item>
+      <a-grid-item v-motion :initial="{ opacity: 0, y: 12 }" :enter="{ opacity: 1, y: 0, transition: { duration: 250, ease: 'easeOut', delay: 0 } }">
         <a-card>
-          <div class="stat-card-value">{{ stats.total }}</div>
+          <div class="stat-card-value">{{ totalDisplay }}</div>
           <div class="stat-card-label">商户总数</div>
         </a-card>
       </a-grid-item>
-      <a-grid-item>
+      <a-grid-item v-motion :initial="{ opacity: 0, y: 12 }" :enter="{ opacity: 1, y: 0, transition: { duration: 250, ease: 'easeOut', delay: 50 } }">
         <a-card>
-          <div class="stat-card-value" style="color: rgb(var(--green-6))">{{ stats.signedIn }}</div>
+          <div class="stat-card-value" style="color: rgb(var(--green-6))">{{ signedInDisplay }}</div>
           <div class="stat-card-label">今日到岗</div>
         </a-card>
       </a-grid-item>
-      <a-grid-item>
+      <a-grid-item v-motion :initial="{ opacity: 0, y: 12 }" :enter="{ opacity: 1, y: 0, transition: { duration: 250, ease: 'easeOut', delay: 100 } }">
         <a-card>
-          <div class="stat-card-value" style="color: rgb(var(--red-6))">{{ stats.absent }}</div>
+          <div class="stat-card-value" style="color: rgb(var(--red-6))">{{ absentDisplay }}</div>
           <div class="stat-card-label">今日缺勤</div>
         </a-card>
       </a-grid-item>
-      <a-grid-item>
+      <a-grid-item v-motion :initial="{ opacity: 0, y: 12 }" :enter="{ opacity: 1, y: 0, transition: { duration: 250, ease: 'easeOut', delay: 150 } }">
         <a-card>
-          <div class="stat-card-value" style="color: rgb(var(--primary-6))">{{ stats.rate }}%</div>
+          <div class="stat-card-value" style="color: rgb(var(--primary-6))">{{ rateDisplay }}%</div>
           <div class="stat-card-label">到岗率</div>
         </a-card>
       </a-grid-item>
@@ -150,8 +161,8 @@ const columns = [
 
     <a-grid :cols="{ xs: 1, lg: 2 }" :col-gap="12" :row-gap="12">
       <a-grid-item>
-        <a-card title="业态占比">
-          <div style="height: 280px"><VChartView :spec="categorySpec" /></div>
+        <a-card title="认证状态占比">
+          <div style="height: 280px"><VChartView :spec="verifiedSpec" /></div>
         </a-card>
       </a-grid-item>
       <a-grid-item>

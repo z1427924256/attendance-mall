@@ -11,6 +11,16 @@
   --app-border: var(--color-neutral-3);
 }
 
+/* 暗黑模式：Arco ConfigProvider theme="dark" 会更新 CSS 变量，
+   这里仅同步原生 UI（滚动条、表单控件）的配色，并兜底背景 */
+html.dark {
+  color-scheme: dark;
+}
+
+html.dark body {
+  background-color: var(--color-fill-1);
+}
+
 html,
 body,
 #app {
@@ -179,4 +189,32 @@ body {
 .fade-enter-from,
 .fade-leave-to {
   opacity: 0;
+}
+
+/* ===== Admin 动效交互补充（不覆盖 Arco 原生 Modal/Drawer/Tab 过渡） ===== */
+
+/* Admin 路由切换过渡 */
+.admin-page-enter-active,
+.admin-page-leave-active {
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.admin-page-enter-from {
+  opacity: 0;
+  transform: translateY(6px);
+}
+
+.admin-page-leave-to {
+  opacity: 0;
+}
+
+/* 表格行 hover 增强（Arco 自带 hover，此处仅补过渡时长） */
+.arco-table-tr {
+  transition: background-color 0.15s ease;
+}
+
+/* 按钮按压反馈（Arco 自带 active，此处补统一的缩放反馈） */
+.arco-btn:not(:disabled):active {
+  transform: scale(0.97);
+  transition: transform 0.1s ease;
 }

@@ -1,5 +1,7 @@
 -- ===== 商场考勤管理系统 D1 数据库 Schema（Vue3 重构版） =====
 -- 重新设计：统一命名规范、添加索引、优化字段类型
+-- v2: 移除商户业态/emoji/负责人/联系电话/面积/营业时间字段；移除 categories 表；
+--     新增 email_config 表；扩充 system_config 默认项
 
 -- 商户表
 CREATE TABLE IF NOT EXISTS merchants (
@@ -7,12 +9,6 @@ CREATE TABLE IF NOT EXISTS merchants (
   name TEXT NOT NULL,
   floor TEXT NOT NULL DEFAULT '1F',
   location TEXT NOT NULL DEFAULT '',
-  category TEXT NOT NULL DEFAULT '',
-  emoji TEXT NOT NULL DEFAULT '🏪',
-  manager TEXT NOT NULL DEFAULT '',
-  contact TEXT NOT NULL DEFAULT '',
-  area INTEGER NOT NULL DEFAULT 0,
-  open_hours TEXT NOT NULL DEFAULT '10:00-22:00',
   verified INTEGER NOT NULL DEFAULT 0,
   avatar TEXT NOT NULL DEFAULT '',
   signed_in INTEGER NOT NULL DEFAULT 0,
@@ -21,7 +17,6 @@ CREATE TABLE IF NOT EXISTS merchants (
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 CREATE INDEX IF NOT EXISTS idx_merchants_floor ON merchants(floor);
-CREATE INDEX IF NOT EXISTS idx_merchants_category ON merchants(category);
 
 -- 考勤记录表
 CREATE TABLE IF NOT EXISTS attendance_records (
@@ -91,15 +86,6 @@ CREATE TABLE IF NOT EXISTS areas (
 );
 CREATE INDEX IF NOT EXISTS idx_areas_floor ON areas(floor_id);
 
--- 业态分类表
-CREATE TABLE IF NOT EXISTS categories (
-  id TEXT PRIMARY KEY,
-  name TEXT NOT NULL,
-  sort_order INTEGER NOT NULL DEFAULT 0,
-  status TEXT NOT NULL DEFAULT 'active',
-  created_at TEXT NOT NULL DEFAULT (datetime('now'))
-);
-
 -- 考勤异常整改台账
 CREATE TABLE IF NOT EXISTS exception_ledger (
   id TEXT PRIMARY KEY,
@@ -130,7 +116,7 @@ CREATE TABLE IF NOT EXISTS alert_rules (
 CREATE TABLE IF NOT EXISTS alert_records (
   id TEXT PRIMARY KEY,
   rule_id TEXT NOT NULL,
-  content TEXT NOT NULL,
+  content TEXT NOT NULL DEFAULT '',
   status TEXT NOT NULL DEFAULT 'active',
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
@@ -140,7 +126,7 @@ CREATE INDEX IF NOT EXISTS idx_alert_rule ON alert_records(rule_id);
 CREATE TABLE IF NOT EXISTS announcements (
   id TEXT PRIMARY KEY,
   title TEXT NOT NULL,
-  content TEXT NOT NULL,
+  content TEXT NOT NULL DEFAULT '',
   type TEXT NOT NULL DEFAULT 'global',
   scope TEXT NOT NULL DEFAULT '[]',
   pinned INTEGER NOT NULL DEFAULT 0,
@@ -164,6 +150,21 @@ CREATE TABLE IF NOT EXISTS system_config (
   value TEXT NOT NULL DEFAULT '',
   updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
+
+-- 邮件配置表（单行 id=1）
+CREATE TABLE IF NOT EXISTS email_config (
+  id INTEGER PRIMARY KEY DEFAULT 1,
+  enabled INTEGER NOT NULL DEFAULT 0,
+  smtp_host TEXT NOT NULL DEFAULT '',
+  smtp_port INTEGER NOT NULL DEFAULT 465,
+  smtp_user TEXT NOT NULL DEFAULT '',
+  smtp_password TEXT NOT NULL DEFAULT '',
+  from_name TEXT NOT NULL DEFAULT '商场考勤管理系统',
+  from_email TEXT NOT NULL DEFAULT '',
+  recipients TEXT NOT NULL DEFAULT '[]',
+  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+INSERT OR IGNORE INTO email_config (id) VALUES (1);
 
 -- 商户评级表
 CREATE TABLE IF NOT EXISTS merchant_ratings (
@@ -201,19 +202,19 @@ INSERT OR IGNORE INTO floors (id, name, sort_order, status) VALUES
   ('f3', '3F', 3, 'active'),
   ('f4', '4F', 4, 'active');
 
-INSERT OR IGNORE INTO categories (id, name, sort_order, status) VALUES
-  ('c1', '餐饮', 1, 'active'),
-  ('c2', '零售', 2, 'active'),
-  ('c3', '配套服务', 3, 'active'),
-  ('c4', '其他', 4, 'active');
-
 INSERT OR IGNORE INTO system_config (key, value) VALUES
   ('mallName', '名创广场'),
   ('logoUrl', ''),
   ('reportHeader', '商场考勤管理报表'),
   ('exportWatermark', '内部资料 请勿外传'),
-  ('emailNotification', '0'),
-  ('themeColor', '#165DFF');
+  ('themeColor', '#165DFF'),
+  ('mallAddress', ''),
+  ('servicePhone', ''),
+  ('mallHours', '10:00-22:00'),
+  ('copyright', ''),
+  ('icp', ''),
+  ('checkinRadius', '0'),
+  ('locationEnabled', '0');
 
 INSERT OR IGNORE INTO alert_rules (id, name, condition_type, threshold, enabled) VALUES
   ('ar1', '单日缺勤商户超5家', 'daily_absent_count', 5, 1),

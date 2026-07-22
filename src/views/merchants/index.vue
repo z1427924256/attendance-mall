@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue';
 import { Message } from '@arco-design/web-vue';
+import type { FileItem } from '@arco-design/web-vue';
 import { useAdminStore } from '@/store/admin';
+import { uploadAvatar } from '@/api/client';
 import type { Merchant } from '@/types';
 
 const store = useAdminStore();
@@ -11,22 +13,15 @@ onMounted(() => {
 });
 
 const FLOOR_OPTIONS = ['1F', '2F', '3F', '4F'];
-const CATEGORY_OPTIONS = [
-  '餐饮', '零售', '服装', '数码', '运动', '咖啡', '茶饮', '快餐',
-  '火锅', '中餐', '西餐', '日料', '甜品', '美妆个护', '生活百货',
-  '潮玩', '配套服务', '其他',
-];
 
 // ===== 筛选 =====
 const searchName = ref('');
 const filterFloor = ref('');
-const filterCategory = ref('');
 
 const filtered = computed(() =>
   store.merchants.filter((m) => {
     if (searchName.value && !m.name.includes(searchName.value)) return false;
     if (filterFloor.value && m.floor !== filterFloor.value) return false;
-    if (filterCategory.value && m.category !== filterCategory.value) return false;
     return true;
   })
 );
@@ -42,6 +37,7 @@ const stats = computed(() => ({
 // ===== 弹窗 & 表单 =====
 const modalVisible = ref(false);
 const submitting = ref(false);
+const uploading = ref(false);
 const editing = ref<Merchant | null>(null);
 const formRef = ref();
 
@@ -49,13 +45,8 @@ const createEmptyForm = (): Partial<Merchant> => ({
   name: '',
   floor: '1F',
   location: '',
-  category: '餐饮',
-  emoji: '🏪',
-  manager: '',
-  contact: '',
-  area: 0,
-  openHours: '10:00-22:00',
   verified: false,
+  avatar: '',
 });
 
 const form = reactive<Partial<Merchant>>(createEmptyForm());
@@ -63,7 +54,6 @@ const form = reactive<Partial<Merchant>>(createEmptyForm());
 const formRules = {
   name: [{ required: true, message: '请输入商户名称' }],
   floor: [{ required: true, message: '请选择楼层' }],
-  category: [{ required: true, message: '请选择业态' }],
 };
 
 function openAdd() {
@@ -78,15 +68,54 @@ function openEdit(record: Merchant) {
     name: record.name,
     floor: record.floor,
     location: record.location,
-    category: record.category,
-    emoji: record.emoji,
-    manager: record.manager,
-    contact: record.contact,
-    area: record.area,
-    openHours: record.openHours,
     verified: record.verified,
+    avatar: record.avatar || '',
   });
   modalVisible.value = true;
+}
+
+// ===== 头像上传 =====
+// 限制 2MB 且仅图片
+function beforeUpload(file: File): boolean {
+  const isImage = file.type.startsWith('image/');
+  if (!isImage) {
+    Message.warning('只能上传图片文件');
+    return false;
+  }
+  if (file.size > 2 * 1024 * 1024) {
+    Message.warning('图片不能超过 2MB');
+    return false;
+  }
+  return true;
+}
+
+async function handleAvatarChange(fileItemList: FileItem[], fileItem: FileItem) {
+  // auto-upload=false，选择文件后手动上传
+  const f = fileItem.file;
+  if (!f) return;
+  if (!beforeUpload(f)) {
+    // 校验失败：清空上传列表
+    return;
+  }
+  uploading.value = true;
+  try {
+    const { url } = await uploadAvatar(f);
+    form.avatar = url;
+    Message.success('头像上传成功');
+  } catch (e) {
+    Message.error('头像上传失败：' + ((e as Error).message || ''));
+  } finally {
+    uploading.value = false;
+  }
+}
+
+function removeAvatar() {
+  form.avatar = '';
+}
+
+// 取商户名首字（用于无头像时显示）
+function firstChar(name?: string) {
+  return (name || '?').trim().charAt(0) || '?';
 }
 
 async function handleSubmit() {
@@ -103,13 +132,8 @@ async function handleSubmit() {
         name: payload.name,
         floor: payload.floor,
         location: payload.location,
-        category: payload.category,
-        emoji: payload.emoji,
-        manager: payload.manager,
-        contact: payload.contact,
-        area: payload.area,
-        openHours: payload.openHours,
         verified: !!payload.verified,
+        avatar: payload.avatar || '',
       });
       Message.success('商户更新成功');
     } else {
@@ -117,13 +141,8 @@ async function handleSubmit() {
         name: payload.name || '',
         floor: payload.floor || '1F',
         location: payload.location || '',
-        category: payload.category || '其他',
-        emoji: payload.emoji || '🏪',
-        manager: payload.manager || '',
-        contact: payload.contact || '',
-        area: payload.area ?? 0,
-        openHours: payload.openHours || '',
         verified: !!payload.verified,
+        avatar: payload.avatar || '',
         signedIn: false,
       });
       Message.success('商户新增成功');
@@ -150,11 +169,6 @@ const columns = [
   { title: '商户', slotName: 'merchant', width: 220 },
   { title: '楼层', dataIndex: 'floor', width: 80, align: 'center' as const },
   { title: '铺位', dataIndex: 'location', width: 110 },
-  { title: '业态', dataIndex: 'category', width: 110 },
-  { title: '负责人', dataIndex: 'manager', width: 100 },
-  { title: '联系电话', dataIndex: 'contact', width: 130 },
-  { title: '面积(㎡)', dataIndex: 'area', width: 100, align: 'right' as const },
-  { title: '营业时间', dataIndex: 'openHours', width: 140 },
   { title: '今日状态', slotName: 'status', width: 110, align: 'center' as const },
   { title: '操作', slotName: 'operations', width: 140, fixed: 'right' as const },
 ];
@@ -216,15 +230,6 @@ const pagination = {
             <a-option value="">全部</a-option>
             <a-option v-for="f in FLOOR_OPTIONS" :key="f" :value="f">{{ f }}</a-option>
           </a-select>
-          <a-select
-            v-model="filterCategory"
-            placeholder="业态"
-            style="width: 150px"
-            allow-clear
-          >
-            <a-option value="">全部业态</a-option>
-            <a-option v-for="c in CATEGORY_OPTIONS" :key="c" :value="c">{{ c }}</a-option>
-          </a-select>
         </a-space>
         <a-button type="primary" @click="openAdd">
           <template #icon><icon-plus /></template>
@@ -239,12 +244,18 @@ const pagination = {
         :loading="store.loading"
         row-key="id"
         size="medium"
-        :scroll="{ x: 1300 }"
+        :scroll="{ x: 900 }"
         style="margin-top: 12px"
       >
         <template #merchant="{ record }">
           <div class="merchant-cell">
-            <a-avatar shape="square" :size="32">{{ record.emoji }}</a-avatar>
+            <a-avatar
+              v-if="record.avatar"
+              shape="square"
+              :size="32"
+              :image-url="record.avatar"
+            />
+            <a-avatar v-else shape="square" :size="32">{{ firstChar(record.name) }}</a-avatar>
             <span class="merchant-name">{{ record.name }}</span>
             <a-tag v-if="record.verified" color="green" size="small">认证</a-tag>
           </div>
@@ -276,6 +287,41 @@ const pagination = {
       @ok="handleSubmit"
     >
       <a-form ref="formRef" :model="form" :rules="formRules" layout="vertical">
+        <!-- 头像 -->
+        <a-form-item field="avatar" label="商户头像">
+          <div class="avatar-row">
+            <a-avatar
+              v-if="form.avatar"
+              shape="square"
+              :size="80"
+              :image-url="form.avatar"
+            />
+            <a-avatar v-else shape="square" :size="80">
+              {{ firstChar(form.name) }}
+            </a-avatar>
+            <a-upload
+              list-type="picture-card"
+              :auto-upload="false"
+              :show-file-list="false"
+              :show-remove-button="false"
+              :custom-request="() => {}"
+              accept="image/*"
+              @change="handleAvatarChange"
+            >
+              <template #upload-button>
+                <a-button :loading="uploading" type="outline">
+                  <template #icon><icon-upload /></template>
+                  选择图片
+                </a-button>
+              </template>
+            </a-upload>
+            <a-button v-if="form.avatar" status="danger" type="text" @click="removeAvatar">
+              移除头像
+            </a-button>
+          </div>
+          <span class="hint">仅支持图片，单文件不超过 2MB</span>
+        </a-form-item>
+
         <a-grid :cols="2" :col-gap="16" :row-gap="0">
           <a-grid-item>
             <a-form-item field="name" label="商户名称" required>
@@ -292,45 +338,6 @@ const pagination = {
           <a-grid-item>
             <a-form-item field="location" label="铺位号">
               <a-input v-model="form.location" placeholder="如 2F-222" allow-clear />
-            </a-form-item>
-          </a-grid-item>
-          <a-grid-item>
-            <a-form-item field="category" label="业态" required>
-              <a-select v-model="form.category" placeholder="请选择业态">
-                <a-option v-for="c in CATEGORY_OPTIONS" :key="c" :value="c">{{ c }}</a-option>
-              </a-select>
-            </a-form-item>
-          </a-grid-item>
-          <a-grid-item>
-            <a-form-item field="emoji" label="Emoji 图标">
-              <a-input v-model="form.emoji" placeholder="如 🏪" />
-            </a-form-item>
-          </a-grid-item>
-          <a-grid-item>
-            <a-form-item field="manager" label="负责人">
-              <a-input v-model="form.manager" placeholder="请输入负责人" allow-clear />
-            </a-form-item>
-          </a-grid-item>
-          <a-grid-item>
-            <a-form-item field="contact" label="联系电话">
-              <a-input v-model="form.contact" placeholder="请输入联系电话" allow-clear />
-            </a-form-item>
-          </a-grid-item>
-          <a-grid-item>
-            <a-form-item field="area" label="面积 (㎡)">
-              <a-input-number
-                v-model="form.area"
-                :min="0"
-                :step="1"
-                :precision="0"
-                style="width: 100%"
-                placeholder="请输入面积"
-              />
-            </a-form-item>
-          </a-grid-item>
-          <a-grid-item>
-            <a-form-item field="openHours" label="营业时间">
-              <a-input v-model="form.openHours" placeholder="如 10:00-22:00" allow-clear />
             </a-form-item>
           </a-grid-item>
           <a-grid-item>
@@ -362,5 +369,19 @@ const pagination = {
 .merchant-name {
   font-weight: 500;
   color: var(--color-text-1);
+}
+
+.avatar-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.hint {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--color-text-3);
 }
 </style>

@@ -1,0 +1,11 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "dianming",
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_id": "32f6708a-55ae-4d6c-98bd-8de89166d1ef",
+      "database_name": "dianming"
+    }
+  ]
+}

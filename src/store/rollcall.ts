@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia';
 import type { Merchant } from '@/types';
-import { fetchMerchants } from '@/api/client';
+import { fetchMerchants, updateMerchant } from '@/api/client';
 
 interface RollCallState {
   merchants: Merchant[];
@@ -63,7 +63,13 @@ export const useRollCallStore = defineStore('rollcall', {
     setActiveTab(tab: RollCallState['activeTab']) {
       this.activeTab = tab;
     },
-    updateMerchant(id: string, data: Partial<Merchant>) {
+    async updateMerchant(id: string, data: Partial<Merchant>) {
+      try {
+        await updateMerchant(id, data);
+      } catch (e) {
+        console.error('updateMerchant failed', e);
+        return;
+      }
       this.merchants = this.merchants.map((m) => (m.id === id ? { ...m, ...data } : m));
     },
   },

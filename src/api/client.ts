@@ -14,15 +14,14 @@ import type {
   AuditLog,
   AuditLogFilters,
   AuditLogResponse,
+  EmailConfig,
   ImportLog,
   ImportResult,
   RecordFilters,
 } from '@/types';
 
-// Capacitor 原生 APP 环境下使用线上 URL，浏览器环境用相对路径
-const BASE = Capacitor.isNativePlatform()
-  ? 'https://attendance-rollcall.pages.dev/api'
-  : '/api';
+// 前后端一体部署：同域相对路径
+const BASE = '/api';
 
 const http: AxiosInstance = axios.create({
   baseURL: BASE,
@@ -79,6 +78,44 @@ export const fetchSystemConfig = () => http.get<unknown, SystemConfig>('/system-
 export const updateSystemConfig = (data: SystemConfig) =>
   http.put<unknown, void>('/system-config', data);
 
+// ===== Email Config =====
+export const fetchEmailConfig = () => http.get<unknown, EmailConfig>('/email-config');
+export const updateEmailConfig = (data: Partial<EmailConfig>) =>
+  http.put<unknown, void>('/email-config', data);
+export const testEmailConfig = () =>
+  http.post<unknown, { success: boolean; message?: string }>('/email-config/test');
+
+// ===== Qiniu Upload (代理上传，绕过浏览器 CORS) =====
+/**
+ * 通用上传：通过后端代理转发到七牛（避免浏览器直传时的 CORS 问题）
+ * @param file 文件
+ * @param prefix key 前缀，如 avatars/ 或 backgrounds/
+ */
+export const uploadToQiniu = async (
+  file: File,
+  prefix = ''
+): Promise<{ url: string; key: string }> => {
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('prefix', prefix);
+  const res = await fetch(`${BASE}/qiniu/upload`, {
+    method: 'POST',
+    body: formData,
+  });
+  const text = await res.text();
+  let data: unknown = null;
+  try { data = JSON.parse(text); } catch { /* 非 JSON */ }
+  if (!res.ok || !data) {
+    const msg = (data && (data as { error?: string }).error) || `HTTP ${res.status}: ${text.slice(0, 200)}`;
+    throw new Error(msg);
+  }
+  return data as { url: string; key: string };
+};
+
+// 便捷封装：头像上传 / 背景图上传
+export const uploadAvatar = (file: File) => uploadToQiniu(file, 'avatars/');
+export const uploadBackground = (file: File) => uploadToQiniu(file, 'backgrounds/');
+
 // ===== Announcements =====
 export const fetchAnnouncements = () => http.get<unknown, Announcement[]>('/announcements');
 export const createAnnouncement = (data: Partial<Announcement>) =>
@@ -88,7 +125,7 @@ export const updateAnnouncement = (id: string, data: Partial<Announcement>) =>
 export const deleteAnnouncement = (id: string) =>
   http.delete<unknown, void>(`/announcements/${id}`);
 
-// ===== Structure (Floors / Areas / Categories) =====
+// ===== Structure (Floors / Areas) =====
 export const fetchFloors = () => http.get<unknown, StructureItem[]>('/floors');
 export const createFloor = (data: Partial<StructureItem>) =>
   http.post<unknown, { success: boolean; id: string }>('/floors', data);
@@ -102,13 +139,6 @@ export const createArea = (data: Partial<StructureItem>) =>
 export const updateArea = (id: string, data: Partial<StructureItem>) =>
   http.put<unknown, void>(`/areas/${id}`, data);
 export const deleteArea = (id: string) => http.delete<unknown, void>(`/areas/${id}`);
-
-export const fetchCategories = () => http.get<unknown, StructureItem[]>('/categories');
-export const createCategory = (data: Partial<StructureItem>) =>
-  http.post<unknown, { success: boolean; id: string }>('/categories', data);
-export const updateCategory = (id: string, data: Partial<StructureItem>) =>
-  http.put<unknown, void>(`/categories/${id}`, data);
-export const deleteCategory = (id: string) => http.delete<unknown, void>(`/categories/${id}`);
 
 // ===== Exceptions =====
 export const fetchExceptions = (filters?: Record<string, string>) =>
